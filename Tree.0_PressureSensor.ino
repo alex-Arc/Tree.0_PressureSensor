@@ -10,18 +10,27 @@ EthernetUDP Udp;
 
 //Arduino IP
 IPAddress inIP(192, 168, 1, 200);
-//host IP
-IPAddress outIP(33663168);      //192.168.1.2  backwards   http://www.csgnetwork.com/ipaddconv.html
+//defaul host IP
+const IPAddress defaulOutIP = 33663168;      //192.168.1.2  backwards   http://www.csgnetwork.com/ipaddconv.html
 
 //Arduino port
 const uint16_t inPort = 49160;
 //defualt host port
-uint16_t outPort = 49155;
+const uint16_t defaulOutPort = 49155;
 
 //arduino mac addr.
 const char mac[] = {
  0x90, 0xA2, 0xDA, 0x10, 0x38, 0xE9 
  };
+
+
+int32_t rawData[4];
+int32_t smoothData[4];
+int16_t prevSmoothData[4];
+int16_t diff[4];
+
+const static int sensorPin[4] = {A0, A1, A2, A3};
+const static int ledPin = 6;
 
 const static uint8_t defaultBeta = 2;
 const static uint8_t defaultThreshold = 1;
@@ -36,10 +45,11 @@ typedef struct S_config {
 T_config config = {
   {defaultBeta, defaultBeta, defaultBeta, defaultBeta},
   {defaultThreshold, defaultThreshold, defaultThreshold, defaultThreshold},
-  49155
+  defaulOutPort,
+  defaulOutIP,     //192.168.1.2  backwards   http://www.csgnetwork.com/ipaddconv.html
 };
 
-//////////eeprom //////////
+//////////eeprom //////////////////////////////////////////////
 // ID of the settings block
 #define CONFIG_VERSION "ps1"
 #define CONFIG_MEM_START 16
@@ -56,11 +66,14 @@ void loadConfig() {
   }
 }
 
-int32_t rawData[4];
-int32_t smoothData[4];
-int16_t prevSmoothData[4];
-int16_t diff[4];
-const int sensorPin[4]  = {A0, A1, A2, A3};
+void saveConfig() {
+  EEPROM.write(CONFIG_MEM_START + 0, CONFIG_VERSION[0]);
+  EEPROM.write(CONFIG_MEM_START + 1, CONFIG_VERSION[1]);
+  EEPROM.write(CONFIG_MEM_START + 2, CONFIG_VERSION[2]);
+  for (unsigned int t = 0; t < sizeof(config); t++) {
+    EEPROM.write(CONFIG_MEM_START + t, *((char*)&config + t));
+  }
+}
 
 ////////////////OSC callback/////////////////////////////
 char * numToOSCAddress( int num){
@@ -78,6 +91,15 @@ char * numToOSCAddress( int num){
     s[i] = '/';
     return &s[i];
 }
+void setLED(OSCMessage &msg, int patternOffset) {
+  if (msg.isInt(0)){ 
+    int val = msg.getInt(0);
+    if (val < 0) {val = 0;}
+    if (val > 255) {val = 255;}
+    analogWrite(ledPin, val);
+    Serial.print(msg.getInt(0));
+  }
+}
 
 void setBeta(OSCMessage &msg, int patternOffset) {
   Serial.print(" settings/beta/");
@@ -89,6 +111,7 @@ void setBeta(OSCMessage &msg, int patternOffset) {
       if (msg.isInt(0)){ 
         config.beta[j] = msg.getInt(0);
         Serial.print(msg.getInt(0));
+        saveConfig();
       }
     }
   }
@@ -104,6 +127,7 @@ void setThreshold(OSCMessage &msg, int patternOffset) {
       if (msg.isInt(0)){ 
         config.threshold[j] = msg.getInt(0);
         Serial.print(msg.getInt(0));
+        saveConfig();
       }
     }
   }
@@ -112,8 +136,9 @@ void setThreshold(OSCMessage &msg, int patternOffset) {
 void setOutPort(OSCMessage &msg, int patternOffset) {
   Serial.print(" settings/setOutPort/");
   if (msg.isInt(0)){ 
-    outPort = msg.getInt(0);
+    config.outPort = msg.getInt(0);
     Serial.print(msg.getInt(0));
+    saveConfig();
   }
 }
 
@@ -125,8 +150,9 @@ void setOutIP(OSCMessage &msg, int patternOffset) {
       Serial.print(j, DEC);
       Serial.print(" ");
       if (msg.isInt(0)){ 
-        outIP[j] = msg.getInt(0);
+        config.outIP[j] = msg.getInt(0);
         Serial.print(msg.getInt(0));
+        saveConfig();
       }
     }
   }
@@ -139,15 +165,15 @@ void setup() {
   Serial.println("begin");
 
   //loadConfig();
-  
+  analogWrite(ledPin, 0);
   // start Ethernet
   Ethernet.begin(mac,inIP);
   Udp.begin(inPort);
-  Serial.println(outIP);
+  Serial.println(config.outIP);
   delay(1000);
   OSCMessage msgOut("/i/am/alive/");
   msgOut.add(inIP[3]);
-  Udp.beginPacket(outIP, outPort);
+  Udp.beginPacket(config.outIP, config.outPort);
   msgOut.send(Udp);
   Udp.endPacket();
 }
@@ -184,6 +210,7 @@ void loop() {
     }
     if(!msgIn.hasError()) {
       Serial.print("got OSC ");
+      msgIn.route("/LED/", setLED);
       msgIn.route("/settings/beta", setBeta);
       msgIn.route("/settings/threshold", setThreshold);
       msgIn.route("/settings/outPort", setOutPort);
