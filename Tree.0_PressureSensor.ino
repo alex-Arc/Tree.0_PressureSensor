@@ -9,9 +9,10 @@
 EthernetUDP Udp;
 
 //Arduino IP
-IPAddress inIP(192, 168, 1, 200);
+IPAddress inIP(192, 168, 8, 11);
 //defaul host IP
-const IPAddress defaulOutIP = 33663168;      //192.168.1.2  backwards   http://www.csgnetwork.com/ipaddconv.html
+const IPAddress defaulOutIP(192, 168, 8, 2);
+//const IPAddress defaulOutIP = 33663168;      //192.168.1.2  backwards   http://www.csgnetwork.com/ipaddconv.html
 
 //Arduino port
 const uint16_t inPort = 49160;
@@ -20,7 +21,7 @@ const uint16_t defaulOutPort = 49155;
 
 //arduino mac addr.
 const char mac[] = {
- 0x90, 0xA2, 0xDA, 0x10, 0x38, 0xE9 
+ 0x90, 0xA2, 0xDA, 0x10, 0x38, 0xE9
  };
 
 
@@ -51,18 +52,23 @@ T_config config = {
 
 //////////eeprom //////////////////////////////////////////////
 // ID of the settings block
-#define CONFIG_VERSION "ps1"
-#define CONFIG_MEM_START 16
+const static uint8_t CONFIG_VERSION[3] = {22, 44, 66};
+#define CONFIG_MEM_START 10
 
 void loadConfig() {
   // To make sure there are settings, and they are YOURS!
   // If nothing is found it will use the default settings.
+  Serial.print(EEPROM.read(CONFIG_MEM_START + 0));
+  Serial.print(EEPROM.read(CONFIG_MEM_START + 1));
+  Serial.println(EEPROM.read(CONFIG_MEM_START + 2));
   if (EEPROM.read(CONFIG_MEM_START + 0) == CONFIG_VERSION[0] &&
       EEPROM.read(CONFIG_MEM_START + 1) == CONFIG_VERSION[1] &&
       EEPROM.read(CONFIG_MEM_START + 2) == CONFIG_VERSION[2]) {
     for (unsigned int t = 0; t < sizeof(config); t++) {
-      *((char*)&config + t ) = EEPROM.read(CONFIG_MEM_START + t);
+      *((char*)&config + t ) = EEPROM.read(CONFIG_MEM_START + 3 + t);
     }
+  }else{
+    Serial.println("no eeprom match");
   }
 }
 
@@ -71,7 +77,7 @@ void saveConfig() {
   EEPROM.write(CONFIG_MEM_START + 1, CONFIG_VERSION[1]);
   EEPROM.write(CONFIG_MEM_START + 2, CONFIG_VERSION[2]);
   for (unsigned int t = 0; t < sizeof(config); t++) {
-    EEPROM.write(CONFIG_MEM_START + t, *((char*)&config + t));
+    EEPROM.write(CONFIG_MEM_START + 3 + t, *((char*)&config + t));
   }
 }
 
@@ -79,7 +85,7 @@ void saveConfig() {
 char * numToOSCAddress( int num){
     static char s[10];
     int i = 9;
-  
+
     s[i--]= '\0';
   do
     {
@@ -92,7 +98,7 @@ char * numToOSCAddress( int num){
     return &s[i];
 }
 void setLED(OSCMessage &msg, int patternOffset) {
-  if (msg.isInt(0)){ 
+  if (msg.isInt(0)){
     int val = msg.getInt(0);
     if (val < 0) {val = 0;}
     if (val > 255) {val = 255;}
@@ -108,7 +114,7 @@ void setBeta(OSCMessage &msg, int patternOffset) {
     if (numMatched) {
       Serial.print(j, DEC);
       Serial.print(" ");
-      if (msg.isInt(0)){ 
+      if (msg.isInt(0)){
         config.beta[j] = msg.getInt(0);
         Serial.print(msg.getInt(0));
         saveConfig();
@@ -124,7 +130,7 @@ void setThreshold(OSCMessage &msg, int patternOffset) {
     if (numMatched) {
       Serial.print(j, DEC);
       Serial.print(" ");
-      if (msg.isInt(0)){ 
+      if (msg.isInt(0)){
         config.threshold[j] = msg.getInt(0);
         Serial.print(msg.getInt(0));
         saveConfig();
@@ -135,7 +141,7 @@ void setThreshold(OSCMessage &msg, int patternOffset) {
 
 void setOutPort(OSCMessage &msg, int patternOffset) {
   Serial.print(" settings/setOutPort/");
-  if (msg.isInt(0)){ 
+  if (msg.isInt(0)){
     config.outPort = msg.getInt(0);
     Serial.print(msg.getInt(0));
     saveConfig();
@@ -149,8 +155,9 @@ void setOutIP(OSCMessage &msg, int patternOffset) {
     if (numMatched) {
       Serial.print(j, DEC);
       Serial.print(" ");
-      if (msg.isInt(0)){ 
+      if (msg.isInt(0)){
         config.outIP[j] = msg.getInt(0);
+        Serial.println(config.outIP);
         Serial.print(msg.getInt(0));
         saveConfig();
       }
@@ -163,8 +170,8 @@ void setup() {
   Serial.begin(9600);
   delay(5000);
   Serial.println("begin");
-
-  //loadConfig();
+  //saveConfig();
+  loadConfig();
   analogWrite(ledPin, 0);
   // start Ethernet
   Ethernet.begin(mac,inIP);
@@ -172,10 +179,10 @@ void setup() {
   Serial.println(config.outIP);
   delay(1000);
   OSCMessage msgOut("/i/am/alive/");
-  msgOut.add(inIP[3]);
   Udp.beginPacket(config.outIP, config.outPort);
   msgOut.send(Udp);
   Udp.endPacket();
+  msgOut.empty();
 }
 
 void loop() {
@@ -201,7 +208,7 @@ void loop() {
       */
     }
   }
-  
+
   int size;
   if( (size = Udp.parsePacket())>0) {
     OSCMessage msgIn;
@@ -218,6 +225,6 @@ void loop() {
       Serial.println("");
     }
   }
-  
+
   //delay(5);
 }
