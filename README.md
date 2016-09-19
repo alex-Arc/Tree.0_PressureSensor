@@ -3,8 +3,10 @@ Pressure sensor for the Tree.0
 
 ## OSC setup
 the arduino will always listen to UDP port `49160` for OSC formatted messages. from default it will respond on UDP port `49155` to IP `192.168.1.2` this can be changed with:
-`/settings/outIP/[0-3] [0-255]`
-`/settings/outPort [0-65535]` recommended reading [UDP port numbers](https://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers)
+`/settings/outIP/[0-3] [0-255]` and
+`/settings/outPort [0-65535]` recommended reading [UDP port numbers](https://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers).
+
+after power up it will send `/i/am/alive/` and agin after a port or ip change.
 
 the arduino will report pressure data through the OSC address: `/pressureSens/[0-3] [0-1023]`
 

@@ -145,6 +145,11 @@ void setOutPort(OSCMessage &msg, int patternOffset) {
     config.outPort = msg.getInt(0);
     Serial.print(msg.getInt(0));
     saveConfig();
+    OSCMessage msgOut("/i/am/alive/");
+    Udp.beginPacket(config.outIP, config.outPort);
+    msgOut.send(Udp);
+    Udp.endPacket();
+    msgOut.empty();
   }
 }
 
@@ -160,6 +165,11 @@ void setOutIP(OSCMessage &msg, int patternOffset) {
         Serial.println(config.outIP);
         Serial.print(msg.getInt(0));
         saveConfig();
+        OSCMessage msgOut("/i/am/alive/");
+        Udp.beginPacket(config.outIP, config.outPort);
+        msgOut.send(Udp);
+        Udp.endPacket();
+        msgOut.empty();
       }
     }
   }
