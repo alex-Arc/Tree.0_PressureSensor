@@ -3,7 +3,6 @@
 #include <EthernetUdp2.h>
 #include <SPI.h>
 #include <OSCBundle.h>
-#include <OSCTiming.h>
 
 
 EthernetUDP Udp;
@@ -12,7 +11,6 @@ EthernetUDP Udp;
 IPAddress inIP(192, 168, 8, 11);
 //defaul host IP
 const IPAddress defaulOutIP(192, 168, 8, 2);
-//const IPAddress defaulOutIP = 33663168;      //192.168.1.2  backwards   http://www.csgnetwork.com/ipaddconv.html
 
 //Arduino port
 const uint16_t inPort = 49160;
@@ -28,17 +26,16 @@ const char mac[] = {
 int32_t rawData[4];
 int32_t smoothData[4];
 int16_t prevSmoothData[4];
-int16_t diff[4];
 
 const static int sensorPin[4] = {A0, A1, A2, A3};
 const static int ledPin = 6;
 
 const static uint8_t defaultBeta = 2;
-const static uint8_t defaultThreshold = 1;
+const static int8_t defaultThreshold = 2;
 
 typedef struct S_config {
   uint8_t beta[4];
-  uint8_t threshold[4];
+  int8_t threshold[4];
   uint16_t outPort;
   IPAddress outIP;
 } T_config;
@@ -47,7 +44,7 @@ T_config config = {
   {defaultBeta, defaultBeta, defaultBeta, defaultBeta},
   {defaultThreshold, defaultThreshold, defaultThreshold, defaultThreshold},
   defaulOutPort,
-  defaulOutIP,     //192.168.1.2  backwards   http://www.csgnetwork.com/ipaddconv.html
+  defaulOutIP
 };
 
 //////////eeprom //////////////////////////////////////////////
@@ -180,7 +177,7 @@ void setup() {
   Serial.begin(9600);
   delay(5000);
   Serial.println("begin");
-  //saveConfig();
+  saveConfig();
   loadConfig();
   analogWrite(ledPin, 0);
   // start Ethernet
@@ -203,19 +200,19 @@ void loop() {
     smoothData[i] += rawData[i];
     smoothData[i] >>= config.beta[i];
     smoothData[i] >>= 21;
-    diff[i] = smoothData[i]-prevSmoothData[i];
-    if (diff[i] > config.threshold[i] || diff < 0-config.threshold[i]){
+    if (smoothData[i] - prevSmoothData[i] > config.threshold[i] || prevSmoothData[i] - smoothData[i] > config.threshold[i]){
+      Serial.print(i);
+      Serial.print(" ");
+      Serial.println(smoothData[i]);
       prevSmoothData[i] = smoothData[i];
       char oscAddr[16] = "/pressureSens/";
       oscAddr[14] = i+48;
       oscAddr[15] = '\0';
-      /*
       OSCMessage msgOut(oscAddr);
       msgOut.add(smoothData[i]);
-      Udp.beginPacket(outIP, outPort);
+      Udp.beginPacket(config.outIP, config.outPort);
       msgOut.send(Udp);
       Udp.endPacket();
-      */
     }
   }
 
