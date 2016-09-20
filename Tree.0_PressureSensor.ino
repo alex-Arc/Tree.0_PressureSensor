@@ -15,11 +15,11 @@ const IPAddress defaulOutIP(192, 168, 8, 2);
 //Arduino port
 const uint16_t inPort = 49160;
 //defualt host port
-const uint16_t defaulOutPort = 49155;
+const uint16_t defaulOutPort = 49161;
 
 //arduino mac addr.
 const char mac[] = {
- 0x90, 0xA2, 0xDA, 0x10, 0x38, 0xE9
+ 0x90, 0xA2, 0xDA, 0x10, 0x39, 0x4A
  };
 
 
@@ -32,6 +32,8 @@ const static int ledPin = 6;
 
 const static uint8_t defaultBeta = 2;
 const static int8_t defaultThreshold = 2;
+
+char oscAddr[21] = "/pressureSens/";   // <--13
 
 typedef struct S_config {
   uint8_t beta[4];
@@ -154,7 +156,7 @@ void setOutIP(OSCMessage &msg, int patternOffset) {
 }
 
 void setup() {
-  saveConfig();
+  //saveConfig();
   loadConfig();
   analogWrite(ledPin, 0);
   // start Ethernet
@@ -168,6 +170,11 @@ void setup() {
   msgOut.send(Udp);
   Udp.endPacket();
   msgOut.empty();
+
+  oscAddr[14] = '0';
+  oscAddr[15] = '1';
+  oscAddr[16] = '1';
+  oscAddr[17] = '/';
 }
 
 void loop() {
@@ -180,9 +187,8 @@ void loop() {
     smoothData[i] >>= 21;
     if (smoothData[i] - prevSmoothData[i] > config.threshold[i] || prevSmoothData[i] - smoothData[i] > config.threshold[i]){
       prevSmoothData[i] = smoothData[i];
-      char oscAddr[16] = "/pressureSens/";
-      oscAddr[14] = i+48;
-      oscAddr[15] = '\0';
+      oscAddr[18] = i+48;
+      oscAddr[19] = '\0';
       OSCMessage msgOut(oscAddr);
       msgOut.add(smoothData[i]);
       Udp.beginPacket(config.outIP, config.outPort);
