@@ -223,7 +223,7 @@ void loop() {
       msgIn.route("/settings/threshold", setThreshold);
       msgIn.route("/settings/outPort", setOutPort);
       msgIn.route("/settings/outIP", setOutIP);
-      msgIn.route("/settings/reset/pleas", setOutIP);
+      msgIn.route("/settings/reset/please", reset);
     }
   }
 
