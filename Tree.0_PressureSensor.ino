@@ -55,17 +55,12 @@ const static uint8_t CONFIG_VERSION[3] = {22, 44, 66};
 void loadConfig() {
   // To make sure there are settings, and they are YOURS!
   // If nothing is found it will use the default settings.
-  Serial.print(EEPROM.read(CONFIG_MEM_START + 0));
-  Serial.print(EEPROM.read(CONFIG_MEM_START + 1));
-  Serial.println(EEPROM.read(CONFIG_MEM_START + 2));
   if (EEPROM.read(CONFIG_MEM_START + 0) == CONFIG_VERSION[0] &&
       EEPROM.read(CONFIG_MEM_START + 1) == CONFIG_VERSION[1] &&
       EEPROM.read(CONFIG_MEM_START + 2) == CONFIG_VERSION[2]) {
     for (unsigned int t = 0; t < sizeof(config); t++) {
       *((char*)&config + t ) = EEPROM.read(CONFIG_MEM_START + 3 + t);
     }
-  }else{
-    Serial.println("no eeprom match");
   }
 }
 
@@ -100,20 +95,15 @@ void setLED(OSCMessage &msg, int patternOffset) {
     if (val < 0) {val = 0;}
     if (val > 255) {val = 255;}
     analogWrite(ledPin, val);
-    Serial.print(msg.getInt(0));
   }
 }
 
 void setBeta(OSCMessage &msg, int patternOffset) {
-  Serial.print(" settings/beta/");
   for (char j = 0; j < 4; j++) {
     int numMatched = msg.match(numToOSCAddress(j), patternOffset);
     if (numMatched) {
-      Serial.print(j, DEC);
-      Serial.print(" ");
       if (msg.isInt(0)){
         config.beta[j] = msg.getInt(0);
-        Serial.print(msg.getInt(0));
         saveConfig();
       }
     }
@@ -121,15 +111,11 @@ void setBeta(OSCMessage &msg, int patternOffset) {
 }
 
 void setThreshold(OSCMessage &msg, int patternOffset) {
-  Serial.print(" settings/setThreshold/");
   for (char j = 0; j < 4; j++) {
     int numMatched = msg.match(numToOSCAddress(j), patternOffset);
     if (numMatched) {
-      Serial.print(j, DEC);
-      Serial.print(" ");
       if (msg.isInt(0)){
         config.threshold[j] = msg.getInt(0);
-        Serial.print(msg.getInt(0));
         saveConfig();
       }
     }
@@ -137,10 +123,8 @@ void setThreshold(OSCMessage &msg, int patternOffset) {
 }
 
 void setOutPort(OSCMessage &msg, int patternOffset) {
-  Serial.print(" settings/setOutPort/");
   if (msg.isInt(0)){
     config.outPort = msg.getInt(0);
-    Serial.print(msg.getInt(0));
     saveConfig();
     OSCMessage msgOut("/i/am/alive/");
     Udp.beginPacket(config.outIP, config.outPort);
@@ -151,18 +135,15 @@ void setOutPort(OSCMessage &msg, int patternOffset) {
 }
 
 void setOutIP(OSCMessage &msg, int patternOffset) {
-  Serial.print("setOutIP");
   for (char j = 0; j < 4; j++) {
     int numMatched = msg.match(numToOSCAddress(j), patternOffset);
     if (numMatched) {
-      Serial.print(j, DEC);
-      Serial.print(" ");
       if (msg.isInt(0)){
         config.outIP[j] = msg.getInt(0);
-        Serial.println(config.outIP);
-        Serial.print(msg.getInt(0));
         saveConfig();
         OSCMessage msgOut("/i/am/alive/");
+        msgOut.add(inIP[3]);
+        msgOut.add(config.outPort);
         Udp.beginPacket(config.outIP, config.outPort);
         msgOut.send(Udp);
         Udp.endPacket();
@@ -173,19 +154,16 @@ void setOutIP(OSCMessage &msg, int patternOffset) {
 }
 
 void setup() {
-  /////////DEBUG/////////
-  Serial.begin(9600);
-  delay(5000);
-  Serial.println("begin");
   saveConfig();
   loadConfig();
   analogWrite(ledPin, 0);
   // start Ethernet
   Ethernet.begin(mac,inIP);
   Udp.begin(inPort);
-  Serial.println(config.outIP);
   delay(1000);
   OSCMessage msgOut("/i/am/alive/");
+  msgOut.add(inIP[3]);
+  msgOut.add(config.outPort);
   Udp.beginPacket(config.outIP, config.outPort);
   msgOut.send(Udp);
   Udp.endPacket();
@@ -201,9 +179,6 @@ void loop() {
     smoothData[i] >>= config.beta[i];
     smoothData[i] >>= 21;
     if (smoothData[i] - prevSmoothData[i] > config.threshold[i] || prevSmoothData[i] - smoothData[i] > config.threshold[i]){
-      Serial.print(i);
-      Serial.print(" ");
-      Serial.println(smoothData[i]);
       prevSmoothData[i] = smoothData[i];
       char oscAddr[16] = "/pressureSens/";
       oscAddr[14] = i+48;
@@ -223,13 +198,11 @@ void loop() {
       msgIn.fill(Udp.read());
     }
     if(!msgIn.hasError()) {
-      Serial.print("got OSC ");
       msgIn.route("/LED/", setLED);
       msgIn.route("/settings/beta", setBeta);
       msgIn.route("/settings/threshold", setThreshold);
       msgIn.route("/settings/outPort", setOutPort);
       msgIn.route("/settings/outIP", setOutIP);
-      Serial.println("");
     }
   }
 
