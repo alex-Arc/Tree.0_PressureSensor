@@ -91,6 +91,20 @@ char * numToOSCAddress( int num){
     s[i] = '/';
     return &s[i];
 }
+void reset(OSCMessage &msg, int patternOffset) {
+  for(int i = 0; i < 4; i++) {
+    config.threshold[i] = defaultThreshold;
+    config.beta[i] = defaultBeta;
+  }
+  config.outPort = defaulOutPort;
+  config.outIP = defaulOutIP;
+  saveConfig();
+  OSCMessage msgOut("/i/am/alive/");
+  Udp.beginPacket(config.outIP, config.outPort);
+  msgOut.send(Udp);
+  Udp.endPacket();
+  msgOut.empty();
+}
 void setLED(OSCMessage &msg, int patternOffset) {
   if (msg.isInt(0)){
     int val = msg.getInt(0);
@@ -209,6 +223,7 @@ void loop() {
       msgIn.route("/settings/threshold", setThreshold);
       msgIn.route("/settings/outPort", setOutPort);
       msgIn.route("/settings/outIP", setOutIP);
+      msgIn.route("/settings/reset/pleas", setOutIP);
     }
   }
 
