@@ -204,7 +204,7 @@ void loop() {
       msgIn.fill(Udp.read());
     }
     if(!msgIn.hasError()) {
-      msgIn.route("/LED/", setLED);
+      msgIn.route("/LED", setLED);
       msgIn.route("/settings/beta", setBeta);
       msgIn.route("/settings/threshold", setThreshold);
       msgIn.route("/settings/outPort", setOutPort);
