@@ -100,6 +100,8 @@ void reset(OSCMessage &msg, int patternOffset) {
   config.outIP = defaulOutIP;
   saveConfig();
   OSCMessage msgOut("/i/am/alive/");
+  msgOut.add(inIP[3]);
+  msgOut.add(config.outPort);
   Udp.beginPacket(config.outIP, config.outPort);
   msgOut.send(Udp);
   Udp.endPacket();
@@ -143,6 +145,8 @@ void setOutPort(OSCMessage &msg, int patternOffset) {
     config.outPort = msg.getInt(0);
     saveConfig();
     OSCMessage msgOut("/i/am/alive/");
+    msgOut.add(inIP[3]);
+    msgOut.add(config.outPort);
     Udp.beginPacket(config.outIP, config.outPort);
     msgOut.send(Udp);
     Udp.endPacket();
